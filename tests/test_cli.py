@@ -92,6 +92,29 @@ def test_instance_list_json_normalizes_legacy_fields(tmp_path: Path):
     assert payload["list"][0]["gpu_amount"] == 2
 
 
+def test_instance_list_accepts_command_local_json_option(tmp_path: Path):
+    config_path = tmp_path / "config.toml"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/api/v1/dev/instance/pro/list"
+        return httpx.Response(
+            200,
+            json={
+                "code": "Success",
+                "data": {"list": [{"uuid": "i-1", "name": "job-1"}]},
+            },
+        )
+
+    with _mock_client(handler):
+        result = runner.invoke(
+            app,
+            ["--config", str(config_path), "--token", "token-1", "instance", "list", "--json"],
+        )
+
+    assert result.exit_code == 0
+    assert json.loads(result.stdout)["list"][0]["uuid"] == "i-1"
+
+
 def test_instance_list_table_uses_documented_uuid_and_name(tmp_path: Path):
     config_path = tmp_path / "config.toml"
 

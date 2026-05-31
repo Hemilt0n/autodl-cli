@@ -235,6 +235,7 @@ uv run autodl --token "$AUTODL_TOKEN" account balance
 
 ```bash
 uv run autodl --json instance list
+uv run autodl instance list --json
 ```
 
 面向脚本或 AI agent 时，请优先使用 `--json`。默认表格输出是给人看的，不保证适合机器解析。

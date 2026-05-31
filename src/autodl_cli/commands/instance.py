@@ -15,12 +15,13 @@ def list_instances(
     ctx: typer.Context,
     page_index: int = typer.Option(1, "--page-index", min=1),
     page_size: int = typer.Option(20, "--page-size", min=1, max=100),
+    json_output: bool = typer.Option(False, "--json", help="输出 JSON，方便脚本处理。"),
 ) -> None:
     """查看当前账号下的 Pro 实例列表。"""
     with client_from_ctx(ctx) as client:
         page = client.list_instances(page_index=page_index, page_size=page_size)
     rows = [_normalize_instance_summary(row) for row in page.items]
-    if ctx.obj.json_output:
+    if ctx.obj.json_output or json_output:
         print_json(
             {
                 "list": rows,
