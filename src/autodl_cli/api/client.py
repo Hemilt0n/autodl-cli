@@ -50,6 +50,24 @@ class AutoDLClient:
         )
         return _page_from_data(data)
 
+    def gpu_stock(
+        self,
+        *,
+        region_sign: str,
+        cuda_v_from: int | None = None,
+        cuda_v_to: int | None = None,
+        gpu_name_set: list[str] | None = None,
+    ) -> list[dict[str, Any]]:
+        payload: dict[str, Any] = {"region_sign": region_sign}
+        if cuda_v_from is not None:
+            payload["cuda_v_from"] = cuda_v_from
+        if cuda_v_to is not None:
+            payload["cuda_v_to"] = cuda_v_to
+        if gpu_name_set:
+            payload["gpu_name_set"] = gpu_name_set
+        data = self._request("POST", "/api/v1/dev/machine/region/gpu_stock", json=payload)
+        return data if isinstance(data, list) else []
+
     def instance_status(self, instance_uuid: str) -> dict[str, Any]:
         return self._request(
             "GET",

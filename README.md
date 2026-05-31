@@ -202,9 +202,14 @@ uv run autodl account balance
 
 ```bash
 uv run autodl instance list
+uv run autodl instance list --stock
 uv run autodl instance status <instance_uuid>
 uv run autodl instance inspect <instance_uuid>
 ```
+
+`--stock` 会额外尝试调用弹性部署 GPU 库存接口，并按实例的地区和 GPU 规格做匹配。
+该库存接口属于弹性部署能力，AutoDL 文档标注需要企业认证；普通 Pro 账号可能只能看到
+`unknown`。
 
 创建实例功能暂时下线，待重新核对 Pro API 参数后再开放。当前建议先在 AutoDL 网页控制台创建实例，再用本工具查询、开机、关机、释放和保存镜像。
 
@@ -366,6 +371,15 @@ POST /api/v1/dev/instance/pro/list
 - 不会去抓取 AutoDL 的网页。
 - 不会获取其他用户或平台机器池。
 - 不会绕过 AutoDL 的调度逻辑。
+
+如果需要在列表中附带库存信息，可以尝试：
+
+```bash
+uv run autodl instance list --stock
+```
+
+这个选项会额外调用弹性部署 GPU 库存接口。该接口和 Pro 实例列表接口不是同一类能力，
+AutoDL 文档标注需要企业认证；普通 Pro 账号可能无法获取准确库存。
 
 因为 AutoDL Pro 是算力和数据分离，通常不需要“抢某一台机器”。后续如果做等待/重试，也只会基于官方 Pro API 做温和重试，不会模拟网页登录或高频刷接口。
 

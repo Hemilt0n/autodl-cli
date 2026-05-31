@@ -151,6 +151,76 @@ def test_instance_list_table_uses_documented_uuid_and_name(tmp_path: Path):
     assert "train-job" in result.stdout
 
 
+def test_instance_list_can_include_stock_status(tmp_path: Path):
+    config_path = tmp_path / "config.toml"
+    paths: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        paths.append(request.url.path)
+        if request.url.path == "/api/v1/dev/instance/pro/list":
+            return httpx.Response(
+                200,
+                json={
+                    "code": "Success",
+                    "data": {
+                        "list": [
+                            {
+                                "uuid": "pro-abc",
+                                "name": "train-job",
+                                "status": "stopped",
+                                "region_sign": "westDC2",
+                                "gpu_spec_uuid": "v-48g",
+                                "gpu_amount": 1,
+                            }
+                        ]
+                    },
+                },
+            )
+        assert request.url.path == "/api/v1/dev/machine/region/gpu_stock"
+        payload = json.loads(request.content)
+        assert payload == {"region_sign": "westDC2"}
+        return httpx.Response(
+            200,
+            json={
+                "code": "Success",
+                "data": [
+                    {
+                        "RTX 4090": {
+                            "idle_gpu_num": 2,
+                            "total_gpu_num": 8,
+                        }
+                    }
+                ],
+            },
+        )
+
+    with _mock_client(handler):
+        result = runner.invoke(
+            app,
+            [
+                "--config",
+                str(config_path),
+                "--token",
+                "token-1",
+                "--json",
+                "instance",
+                "list",
+                "--stock",
+            ],
+        )
+
+    assert result.exit_code == 0
+    assert paths == [
+        "/api/v1/dev/instance/pro/list",
+        "/api/v1/dev/machine/region/gpu_stock",
+    ]
+    row = json.loads(result.stdout)["list"][0]
+    assert row["stock_status"] == "available"
+    assert row["stock_gpu_name"] == "RTX 4090"
+    assert row["stock_idle_gpu_num"] == 2
+    assert row["stock_total_gpu_num"] == 8
+
+
 def test_help_is_chinese_by_default():
     result = runner.invoke(app, ["--help"])
 
