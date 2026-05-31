@@ -24,7 +24,7 @@ def test_config_roundtrip(tmp_path):
 def test_file_token_roundtrip(tmp_path):
     manager = ConfigManager(config_path=tmp_path / "config.toml", data_dir=tmp_path)
 
-    manager.set_token("default", "secret-token", store="file")
+    manager.set_token("file-test-profile", "secret-token", store="file")
 
-    assert manager.get_token("default") == "secret-token"
-    assert manager.require_token("default") == "secret-token"
+    assert manager.get_token("file-test-profile") == "secret-token"
+    assert manager.require_token("file-test-profile") == "secret-token"

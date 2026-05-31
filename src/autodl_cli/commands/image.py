@@ -7,7 +7,7 @@ import typer
 from autodl_cli.app import client_from_ctx
 from autodl_cli.output import print_json, print_kv, print_rows
 
-app = typer.Typer(help="Pro image commands.", no_args_is_help=True)
+app = typer.Typer(help="Pro 镜像相关命令。", no_args_is_help=True)
 
 
 @app.command("list")
@@ -16,7 +16,7 @@ def list_images(
     page_index: int = typer.Option(1, "--page-index", min=1),
     page_size: int = typer.Option(20, "--page-size", min=1, max=100),
 ) -> None:
-    """List private Pro images."""
+    """查看私有 Pro 镜像列表。"""
     with client_from_ctx(ctx) as client:
         page = client.list_private_images(page_index=page_index, page_size=page_size)
     if ctx.obj.json_output:
@@ -27,7 +27,7 @@ def list_images(
 
 @app.command("save")
 def save(ctx: typer.Context, instance_uuid: str, name: str = typer.Option(..., "--name")) -> None:
-    """Save a Pro instance as a private image."""
+    """把 Pro 实例保存为私有镜像。"""
     with client_from_ctx(ctx) as client:
         data = client.save_image(instance_uuid, name)
     _print_data(ctx, "Image Save", data)

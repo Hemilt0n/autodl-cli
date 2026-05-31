@@ -54,6 +54,48 @@ def test_instance_list_command(tmp_path: Path):
     assert json.loads(result.stdout)["list"][0]["instance_uuid"] == "i-1"
 
 
+def test_instance_list_table_uses_documented_uuid_and_name(tmp_path: Path):
+    config_path = tmp_path / "config.toml"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/api/v1/dev/instance/pro/list"
+        return httpx.Response(
+            200,
+            json={
+                "code": "Success",
+                "data": {
+                    "list": [
+                        {
+                            "uuid": "pro-abc",
+                            "name": "train-job",
+                            "status": "running",
+                            "gpu_spec_uuid": "4090",
+                            "gpu_amount": 1,
+                        }
+                    ]
+                },
+            },
+        )
+
+    with _mock_client(handler):
+        result = runner.invoke(
+            app,
+            ["--config", str(config_path), "--token", "token-1", "instance", "list"],
+        )
+
+    assert result.exit_code == 0
+    assert "pro-abc" in result.stdout
+    assert "train-job" in result.stdout
+
+
+def test_help_is_chinese_by_default():
+    result = runner.invoke(app, ["--help"])
+
+    assert result.exit_code == 0
+    assert "AutoDL Pro 命令行工具" in result.stdout
+    assert "账户相关命令" in result.stdout
+
+
 def test_image_save_command(tmp_path: Path):
     config_path = tmp_path / "config.toml"
 

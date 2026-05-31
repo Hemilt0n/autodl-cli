@@ -122,6 +122,8 @@ class ConfigManager:
             return
 
         if store == "file":
+            with contextlib.suppress(Exception):
+                keyring.delete_password(_KEYRING_SERVICE, profile)
             self._data_dir.mkdir(parents=True, exist_ok=True)
             token_path = self._token_path(profile)
             token_path.write_text(token, encoding="utf-8")

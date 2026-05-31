@@ -22,9 +22,10 @@ class AppContext:
 
 app = typer.Typer(
     name="autodl",
-    help="AutoDL Pro command-line tool.",
+    help="AutoDL Pro 命令行工具。",
     invoke_without_command=True,
     no_args_is_help=False,
+    add_completion=False,
 )
 
 
@@ -34,14 +35,14 @@ def callback(
     version: bool = typer.Option(
         False,
         "--version",
-        help="Show version and exit.",
+        help="显示版本并退出。",
         is_eager=True,
     ),
-    profile: str = typer.Option("default", "--profile", "-P", help="Configuration profile."),
-    config: Path | None = typer.Option(None, "--config", "-C", help="Config file path."),
-    base_url: str | None = typer.Option(None, "--base-url", help="Override API base URL."),
-    token: str = typer.Option("", "--token", "-T", help="Temporary token, not persisted."),
-    json_output: bool = typer.Option(False, "--json", help="Print JSON output."),
+    profile: str = typer.Option("default", "--profile", "-P", help="配置 profile 名称。"),
+    config: Path | None = typer.Option(None, "--config", "-C", help="指定配置文件路径。"),
+    base_url: str | None = typer.Option(None, "--base-url", help="覆盖 AutoDL API 地址。"),
+    token: str = typer.Option("", "--token", "-T", help="临时 token，不写入配置。"),
+    json_output: bool = typer.Option(False, "--json", help="输出 JSON，方便脚本处理。"),
 ) -> None:
     if version:
         typer.echo("autodl-cli 0.1.0")

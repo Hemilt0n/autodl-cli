@@ -5,12 +5,12 @@ import typer
 from autodl_cli.app import client_from_ctx
 from autodl_cli.output import print_json, print_kv
 
-app = typer.Typer(help="Account commands.", no_args_is_help=True)
+app = typer.Typer(help="账户相关命令。", no_args_is_help=True)
 
 
 @app.command("balance")
 def balance(ctx: typer.Context) -> None:
-    """Show account balance."""
+    """查看账户余额。"""
     with client_from_ctx(ctx) as client:
         result = client.balance()
 
