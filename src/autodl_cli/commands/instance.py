@@ -21,7 +21,15 @@ def list_instances(
         page = client.list_instances(page_index=page_index, page_size=page_size)
     rows = [_normalize_instance_summary(row) for row in page.items]
     if ctx.obj.json_output:
-        print_json(page.model_dump(mode="python"))
+        print_json(
+            {
+                "list": rows,
+                "page_index": page.page_index,
+                "page_size": page.page_size,
+                "total_count": page.total_count,
+                "total_page": page.total_page,
+            }
+        )
     else:
         print_rows(
             "实例列表",

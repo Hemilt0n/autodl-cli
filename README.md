@@ -237,6 +237,28 @@ uv run autodl --token "$AUTODL_TOKEN" account balance
 uv run autodl --json instance list
 ```
 
+面向脚本或 AI agent 时，请优先使用 `--json`。默认表格输出是给人看的，不保证适合机器解析。
+
+`instance list --json` 会返回稳定的 key-value 结构，列表项会包含规范化字段：
+
+```json
+{
+  "list": [
+    {
+      "uuid": "pro-xxx",
+      "name": "train-job",
+      "status": "running",
+      "gpu_spec_uuid": "4090",
+      "gpu_amount": 1
+    }
+  ],
+  "page_index": 1,
+  "page_size": 20,
+  "total_count": 1,
+  "total_page": 1
+}
+```
+
 指定配置文件：
 
 ```bash

@@ -113,6 +113,10 @@ Command output should have two modes:
 - Default: readable terminal output using Rich.
 - `--json`: stable JSON suitable for scripts.
 
+AI agents and automation should use `--json`, not Rich table output. Human-facing tables are optimized for readability and may change formatting.
+
+For list commands, keep JSON field names stable and normalized. For example, `instance list --json` should expose `uuid`, `name`, `status`, `gpu_spec_uuid`, and `gpu_amount` even if AutoDL returns legacy or alternate field names.
+
 For commands that may charge money or release resources, require confirmation unless a clear `--yes` flag is provided.
 
 ## Config and Token Storage

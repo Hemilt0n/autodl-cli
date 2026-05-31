@@ -40,7 +40,7 @@ def test_instance_list_command(tmp_path: Path):
             200,
             json={
                 "code": "Success",
-                "data": {"list": [{"instance_uuid": "i-1", "status": "running"}]},
+                "data": {"list": [{"uuid": "i-1", "name": "job-1", "status": "running"}]},
             },
         )
 
@@ -51,7 +51,45 @@ def test_instance_list_command(tmp_path: Path):
         )
 
     assert result.exit_code == 0
-    assert json.loads(result.stdout)["list"][0]["instance_uuid"] == "i-1"
+    payload = json.loads(result.stdout)
+    assert payload["list"][0]["uuid"] == "i-1"
+    assert payload["list"][0]["name"] == "job-1"
+    assert "status" in payload["list"][0]
+
+
+def test_instance_list_json_normalizes_legacy_fields(tmp_path: Path):
+    config_path = tmp_path / "config.toml"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/api/v1/dev/instance/pro/list"
+        return httpx.Response(
+            200,
+            json={
+                "code": "Success",
+                "data": {
+                    "list": [
+                        {
+                            "instance_uuid": "legacy-id",
+                            "instance_name": "legacy-name",
+                            "req_gpu_amount": 2,
+                            "status": "stopped",
+                        }
+                    ]
+                },
+            },
+        )
+
+    with _mock_client(handler):
+        result = runner.invoke(
+            app,
+            ["--config", str(config_path), "--token", "token-1", "--json", "instance", "list"],
+        )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload["list"][0]["uuid"] == "legacy-id"
+    assert payload["list"][0]["name"] == "legacy-name"
+    assert payload["list"][0]["gpu_amount"] == 2
 
 
 def test_instance_list_table_uses_documented_uuid_and_name(tmp_path: Path):
