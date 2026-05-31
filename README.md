@@ -4,6 +4,8 @@
 
 这个项目目前专注 **AutoDL Pro 实例**，不做企业弹性部署 API，也不抓网页、不模拟网页登录。
 
+AutoDL Pro 实例控制台：[https://www.autodl.com/console/instance/pro/list](https://www.autodl.com/console/instance/pro/list)
+
 ## 它能做什么
 
 - 查看 AutoDL 账户余额。
