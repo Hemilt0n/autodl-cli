@@ -72,12 +72,13 @@ def _ctx(ctx: typer.Context) -> AppContext:
     return ctx.obj
 
 
-def _run() -> None:
+def _run() -> int:
     try:
         app()
     except AutoDLError as exc:
         typer.secho(f"Error: {exc}", err=True, fg=typer.colors.RED)
-        raise typer.Exit(code=1) from exc
+        return 1
+    return 0
 
 
 from autodl_cli.commands import account, auth, config, image, init, instance  # noqa: E402
@@ -90,5 +91,5 @@ app.add_typer(image.app, name="image")
 app.command(name="init")(init.init_command)
 
 
-def main() -> None:
-    _run()
+def main() -> int:
+    return _run()

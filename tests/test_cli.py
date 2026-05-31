@@ -6,7 +6,9 @@ from pathlib import Path
 import httpx
 from typer.testing import CliRunner
 
+import autodl_cli.app as app_module
 from autodl_cli.app import app
+from autodl_cli.errors import AutoDLCapacityError
 
 runner = CliRunner()
 
@@ -277,6 +279,18 @@ def test_version_command():
 
     assert result.exit_code == 0
     assert "autodl-cli 0.1.0" in result.stdout
+
+
+def test_main_prints_project_errors_without_traceback(monkeypatch, capsys):
+    def fail_app():
+        raise AutoDLCapacityError("当前算力规格暂无库存, 请修改配置或稍等再试")
+
+    monkeypatch.setattr(app_module, "app", fail_app)
+
+    assert app_module.main() == 1
+    captured = capsys.readouterr()
+    assert "Error: 当前算力规格暂无库存, 请修改配置或稍等再试" in captured.err
+    assert "Traceback" not in captured.err
 
 
 class _mock_client:
