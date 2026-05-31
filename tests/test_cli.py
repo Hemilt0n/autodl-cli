@@ -1,0 +1,112 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import httpx
+from typer.testing import CliRunner
+
+from autodl_cli.app import app
+
+runner = CliRunner()
+
+
+def test_account_balance_command(tmp_path: Path):
+    config_path = tmp_path / "config.toml"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/api/v1/dev/wallet/balance"
+        return httpx.Response(
+            200,
+            json={"code": "Success", "data": {"assets": 1000, "voucher_balance": 0, "accumulate": 0}},
+        )
+
+    with _mock_client(handler):
+        result = runner.invoke(
+            app,
+            ["--config", str(config_path), "--token", "token-1", "--json", "account", "balance"],
+        )
+
+    assert result.exit_code == 0
+    assert json.loads(result.stdout)["cash_yuan"] == 1
+
+
+def test_instance_list_command(tmp_path: Path):
+    config_path = tmp_path / "config.toml"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/api/v1/dev/instance/pro/list"
+        return httpx.Response(
+            200,
+            json={
+                "code": "Success",
+                "data": {"list": [{"instance_uuid": "i-1", "status": "running"}]},
+            },
+        )
+
+    with _mock_client(handler):
+        result = runner.invoke(
+            app,
+            ["--config", str(config_path), "--token", "token-1", "--json", "instance", "list"],
+        )
+
+    assert result.exit_code == 0
+    assert json.loads(result.stdout)["list"][0]["instance_uuid"] == "i-1"
+
+
+def test_image_save_command(tmp_path: Path):
+    config_path = tmp_path / "config.toml"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/api/v1/dev/instance/pro/image/save"
+        payload = json.loads(request.content)
+        assert payload == {"instance_uuid": "i-1", "image_name": "snapshot"}
+        return httpx.Response(200, json={"code": "Success", "data": {"image_uuid": "img-1"}})
+
+    with _mock_client(handler):
+        result = runner.invoke(
+            app,
+            [
+                "--config",
+                str(config_path),
+                "--token",
+                "token-1",
+                "--json",
+                "image",
+                "save",
+                "i-1",
+                "--name",
+                "snapshot",
+            ],
+        )
+
+    assert result.exit_code == 0
+    assert json.loads(result.stdout)["image_uuid"] == "img-1"
+
+
+class _mock_client:
+    def __init__(self, handler):
+        self.handler = handler
+        self.original_init = None
+
+    def __enter__(self):
+        from autodl_cli.api.client import AutoDLClient
+
+        self.original_init = AutoDLClient.__init__
+
+        def init(instance, *, token, base_url="https://api.autodl.com", timeout=30.0, transport=None):
+            self.original_init(
+                instance,
+                token=token,
+                base_url=base_url,
+                timeout=timeout,
+                transport=httpx.MockTransport(self.handler),
+            )
+
+        AutoDLClient.__init__ = init
+        return self
+
+    def __exit__(self, *_exc):
+        from autodl_cli.api.client import AutoDLClient
+
+        AutoDLClient.__init__ = self.original_init
