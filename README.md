@@ -177,17 +177,23 @@ uv run autodl instance stop <instance_uuid>
 uv run autodl instance release <instance_uuid>
 ```
 
+这是高危操作，会释放实例资源。请先确认实例内重要数据、镜像和任务状态已经处理完毕。
+
 跳过确认直接释放：
 
 ```bash
 uv run autodl instance release <instance_uuid> --yes
 ```
 
+`--yes` 只会跳过交互确认，不代表操作更安全。CLI 仍会在 stderr 打印高危警告。
+
 先关机再释放：
 
 ```bash
 uv run autodl instance destroy <instance_uuid>
 ```
+
+这是高危操作，会先关机再释放实例资源。请先确认实例内重要数据、镜像和任务状态已经处理完毕。
 
 跳过确认直接关机并释放：
 
@@ -248,8 +254,9 @@ uv run autodl --version
 请特别注意：
 
 - `instance start` 会有卡开机，也是可能产生费用的操作。
-- `instance release` 会释放实例。
-- `instance destroy` 会先关机再释放实例。
+- `instance release` 是高危操作，会释放实例资源。
+- `instance destroy` 是高危操作，会先关机再释放实例资源。
+- 使用 `--yes` 会跳过交互确认，适合脚本，但请只在你非常确定目标实例时使用。
 
 建议新用户先只运行这些只读命令：
 

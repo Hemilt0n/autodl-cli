@@ -73,8 +73,12 @@ def release(
     yes: bool = typer.Option(False, "--yes", "-y", help="跳过确认。"),
 ) -> None:
     """释放已关机的 Pro 实例。"""
+    _warn_dangerous_operation(
+        "高危操作：release 会释放实例资源。请确认实例内重要数据、镜像和任务状态已经处理完毕。",
+        instance_uuid,
+    )
     if not yes:
-        typer.confirm(f"确定释放实例 {instance_uuid} 吗？", abort=True)
+        typer.confirm(f"确认继续释放实例 {instance_uuid}？", abort=True)
     with client_from_ctx(ctx) as client:
         data = client.release(instance_uuid)
     _print_data(ctx, "Instance Release", data or {"ok": True})
@@ -87,8 +91,12 @@ def destroy(
     yes: bool = typer.Option(False, "--yes", "-y", help="跳过确认。"),
 ) -> None:
     """先关机再释放 Pro 实例。"""
+    _warn_dangerous_operation(
+        "高危操作：destroy 会先关机再释放实例资源。请确认实例内重要数据、镜像和任务状态已经处理完毕。",
+        instance_uuid,
+    )
     if not yes:
-        typer.confirm(f"确定关机并释放实例 {instance_uuid} 吗？", abort=True)
+        typer.confirm(f"确认继续关机并释放实例 {instance_uuid}？", abort=True)
     with client_from_ctx(ctx) as client:
         stop_result = client.power_off(instance_uuid)
         release_result = client.release(instance_uuid)
@@ -129,6 +137,12 @@ def _first_present(row: dict[str, Any], *keys: str) -> Any:
         if value not in (None, ""):
             return value
     return ""
+
+
+def _warn_dangerous_operation(message: str, instance_uuid: str) -> None:
+    typer.secho("!!! 高危操作警告 !!!", fg=typer.colors.RED, bold=True, err=True)
+    typer.secho(message, fg=typer.colors.RED, err=True)
+    typer.secho(f"目标实例：{instance_uuid}", fg=typer.colors.RED, err=True)
 
 
 def _print_data(ctx: typer.Context, title: str, data: Any) -> None:

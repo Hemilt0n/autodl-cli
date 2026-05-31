@@ -158,6 +158,59 @@ def test_instance_destroy_stops_then_releases(tmp_path: Path):
     ]
 
 
+def test_release_prints_high_risk_warning_even_with_yes(tmp_path: Path):
+    config_path = tmp_path / "config.toml"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/api/v1/dev/instance/pro/release"
+        return httpx.Response(200, json={"code": "Success", "data": {}})
+
+    with _mock_client(handler):
+        result = runner.invoke(
+            app,
+            [
+                "--config",
+                str(config_path),
+                "--token",
+                "token-1",
+                "--json",
+                "instance",
+                "release",
+                "i-1",
+                "--yes",
+            ],
+        )
+
+    assert result.exit_code == 0
+    assert json.loads(result.stdout)["ok"] is True
+    assert "高危操作警告" in result.stderr
+    assert "release 会释放实例资源" in result.stderr
+
+
+def test_destroy_confirmation_contains_high_risk_warning(tmp_path: Path):
+    config_path = tmp_path / "config.toml"
+
+    with _mock_client(lambda _request: httpx.Response(500)):
+        result = runner.invoke(
+            app,
+            [
+                "--config",
+                str(config_path),
+                "--token",
+                "token-1",
+                "instance",
+                "destroy",
+                "i-1",
+            ],
+            input="n\n",
+        )
+
+    assert result.exit_code != 0
+    assert "高危操作警告" in result.stderr
+    assert "destroy 会先关机再释放实例资源" in result.stderr
+    assert "确认继续关机并释放实例 i-1" in result.stdout
+
+
 def test_version_command():
     result = runner.invoke(app, ["--version"])
 
