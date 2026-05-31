@@ -124,21 +124,30 @@ AutoDL 控制台 -> 账号/设置 -> 开发者 Token
 
 ### 1. 初始化
 
-推荐优先把 token 存进系统密钥链：
+默认会优先把 token 存进系统密钥链；如果当前 Linux/headless 环境没有可用
+keyring，会自动改用本地 token 文件：
 
 ```bash
-uv run autodl init --token-store keyring
+uv run autodl init
 ```
 
 命令会提示你输入 token。输入时不会明文显示。
 
-如果你的机器没有可用的系统密钥链，可以改用本地文件保存：
+如果你想明确指定保存方式，也可以手动选择：
 
 ```bash
+uv run autodl init --token-store keyring
 uv run autodl init --token-store file
 ```
 
 本地 token 文件会放在用户数据目录下，并尽量设置为只有当前用户可读写。
+
+如果你在没有系统 keyring 的机器上强制使用 `--token-store keyring`，命令会报错；
+这时请使用默认的 `auto` 或明确指定本地文件：
+
+```bash
+uv run autodl init --token-store file
+```
 
 ### 2. 检查 token 是否可用
 

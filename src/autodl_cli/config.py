@@ -105,33 +105,32 @@ class ConfigManager:
                 return token
         return None
 
-    def set_token(self, profile: str, token: str, *, store: str = "keyring") -> None:
+    def set_token(self, profile: str, token: str, *, store: str = "auto") -> str:
         if not token.strip():
             raise AutoDLConfigError("Token cannot be empty.")
 
-        if store == "keyring":
+        if store in {"auto", "keyring"}:
             try:
                 keyring.set_password(_KEYRING_SERVICE, profile, token)
             except Exception as exc:
+                if store == "auto":
+                    self._write_token_file(profile, token)
+                    return "file"
                 raise AutoDLConfigError(
                     "Failed to save token to keyring. Use --token-store file if needed."
                 ) from exc
             token_path = self._token_path(profile)
             if token_path.exists():
                 token_path.unlink()
-            return
+            return "keyring"
 
         if store == "file":
             with contextlib.suppress(Exception):
                 keyring.delete_password(_KEYRING_SERVICE, profile)
-            self._data_dir.mkdir(parents=True, exist_ok=True)
-            token_path = self._token_path(profile)
-            token_path.write_text(token, encoding="utf-8")
-            with contextlib.suppress(OSError):
-                os.chmod(token_path, 0o600)
-            return
+            self._write_token_file(profile, token)
+            return "file"
 
-        raise AutoDLConfigError("Token store must be 'keyring' or 'file'.")
+        raise AutoDLConfigError("Token store must be 'auto', 'keyring', or 'file'.")
 
     def require_token(self, profile: str, override: str = "") -> str:
         if override:
@@ -145,3 +144,10 @@ class ConfigManager:
 
     def _token_path(self, profile: str) -> Path:
         return self._data_dir / f"{profile}.token"
+
+    def _write_token_file(self, profile: str, token: str) -> None:
+        self._data_dir.mkdir(parents=True, exist_ok=True)
+        token_path = self._token_path(profile)
+        token_path.write_text(token, encoding="utf-8")
+        with contextlib.suppress(OSError):
+            os.chmod(token_path, 0o600)

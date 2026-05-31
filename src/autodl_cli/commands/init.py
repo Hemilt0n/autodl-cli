@@ -9,7 +9,11 @@ from autodl_cli.config import ProfileConfig
 def init_command(
     ctx: typer.Context,
     token: str = typer.Option("", "--token", "-T", prompt=True, hide_input=True),
-    token_store: str = typer.Option("keyring", "--token-store", help="token 保存方式：keyring 或 file。"),
+    token_store: str = typer.Option(
+        "auto",
+        "--token-store",
+        help="token 保存方式：auto、keyring 或 file。",
+    ),
     gpu_spec_uuid: str = typer.Option("", "--gpu-spec-uuid"),
     image_uuid: str = typer.Option("", "--image-uuid"),
     cuda_v_from: int = typer.Option(118, "--cuda-v-from"),
@@ -19,7 +23,7 @@ def init_command(
 ) -> None:
     """初始化 token 和默认 Pro 实例参数。"""
     manager = manager_from_ctx(ctx)
-    manager.set_token(ctx.obj.profile, token, store=token_store)
+    actual_token_store = manager.set_token(ctx.obj.profile, token, store=token_store)
     existing = manager.get_profile(ctx.obj.profile)
     manager.update_profile(
         ctx.obj.profile,
@@ -34,4 +38,7 @@ def init_command(
             min_balance_yuan=existing.min_balance_yuan,
         ),
     )
-    typer.echo(f"已保存 profile '{ctx.obj.profile}'：{manager.config_path}")
+    typer.echo(
+        f"已保存 profile '{ctx.obj.profile}'：{manager.config_path} "
+        f"(token store: {actual_token_store})"
+    )
