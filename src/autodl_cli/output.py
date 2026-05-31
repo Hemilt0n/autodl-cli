@@ -20,15 +20,17 @@ def redact(value: Any) -> Any:
     return value
 
 
-def print_json(data: Any) -> None:
-    Console().print(json.dumps(redact(data), ensure_ascii=False, indent=2, default=str))
+def print_json(data: Any, *, redact_secrets: bool = True) -> None:
+    payload = redact(data) if redact_secrets else data
+    Console().print(json.dumps(payload, ensure_ascii=False, indent=2, default=str))
 
 
-def print_kv(title: str, data: dict[str, Any]) -> None:
+def print_kv(title: str, data: dict[str, Any], *, redact_secrets: bool = True) -> None:
     table = Table(title=title, show_header=False)
     table.add_column("Key")
     table.add_column("Value")
-    for key, value in redact(data).items():
+    payload = redact(data) if redact_secrets else data
+    for key, value in payload.items():
         table.add_row(str(key), "" if value is None else str(value))
     Console().print(table)
 

@@ -81,6 +81,7 @@ def inspect(
     ctx: typer.Context,
     instance_uuid: str | None = typer.Argument(None),
     name: str = typer.Option("", "--name", "-n", help="按实例名称查找。"),
+    show_secret: bool = typer.Option(False, "--show-secret", help="显示 root 密码、Jupyter token 等敏感字段。"),
 ) -> None:
     """查看 Pro 实例详情，默认隐藏敏感信息。"""
     with client_from_ctx(ctx) as client:
@@ -88,7 +89,7 @@ def inspect(
         if not instance_uuid:
             return
         data = client.instance_snapshot(instance_uuid)
-    _print_data(ctx, "Instance", data)
+    _print_data(ctx, "Instance", data, redact_secrets=not show_secret)
 
 
 @app.command("start")
@@ -369,10 +370,10 @@ def _warn_dangerous_operation(message: str, instance_uuid: str) -> None:
     typer.secho(f"目标实例：{instance_uuid}", fg=typer.colors.RED, err=True)
 
 
-def _print_data(ctx: typer.Context, title: str, data: Any) -> None:
+def _print_data(ctx: typer.Context, title: str, data: Any, *, redact_secrets: bool = True) -> None:
     if not isinstance(data, dict):
         data = {"result": data}
     if ctx.obj.json_output:
-        print_json(data)
+        print_json(data, redact_secrets=redact_secrets)
     else:
-        print_kv(title, data)
+        print_kv(title, data, redact_secrets=redact_secrets)

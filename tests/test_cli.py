@@ -221,6 +221,84 @@ def test_instance_list_can_include_stock_status(tmp_path: Path):
     assert row["stock_total_gpu_num"] == 8
 
 
+def test_instance_inspect_redacts_secrets_by_default(tmp_path: Path):
+    config_path = tmp_path / "config.toml"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/api/v1/dev/instance/pro/snapshot"
+        return httpx.Response(
+            200,
+            json={
+                "code": "Success",
+                "data": {
+                    "uuid": "pro-abc",
+                    "root_password": "secret-password",
+                    "jupyter_token": "secret-token",
+                },
+            },
+        )
+
+    with _mock_client(handler):
+        result = runner.invoke(
+            app,
+            [
+                "--config",
+                str(config_path),
+                "--token",
+                "token-1",
+                "--json",
+                "instance",
+                "inspect",
+                "pro-abc",
+            ],
+        )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload["root_password"] == "***"
+    assert payload["jupyter_token"] == "***"
+    assert "secret-password" not in result.stdout
+
+
+def test_instance_inspect_can_show_secrets(tmp_path: Path):
+    config_path = tmp_path / "config.toml"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/api/v1/dev/instance/pro/snapshot"
+        return httpx.Response(
+            200,
+            json={
+                "code": "Success",
+                "data": {
+                    "uuid": "pro-abc",
+                    "root_password": "secret-password",
+                    "jupyter_token": "secret-token",
+                },
+            },
+        )
+
+    with _mock_client(handler):
+        result = runner.invoke(
+            app,
+            [
+                "--config",
+                str(config_path),
+                "--token",
+                "token-1",
+                "--json",
+                "instance",
+                "inspect",
+                "pro-abc",
+                "--show-secret",
+            ],
+        )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload["root_password"] == "secret-password"
+    assert payload["jupyter_token"] == "secret-token"
+
+
 def test_help_is_chinese_by_default():
     result = runner.invoke(app, ["--help"])
 

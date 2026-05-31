@@ -187,6 +187,14 @@ uv run autodl instance inspect <instance_uuid>
 
 输出会自动隐藏敏感字段。
 
+如果确实需要查看 root 密码、Jupyter token 等敏感字段：
+
+```bash
+uv run autodl instance inspect <instance_uuid> --show-secret
+```
+
+请避免在共享终端、CI 日志或命令历史中暴露这些输出。
+
 ## 常用命令
 
 ### 账户
@@ -206,6 +214,7 @@ uv run autodl instance list --stock
 uv run autodl instance status <instance_uuid>
 uv run autodl instance status -n <instance_name>
 uv run autodl instance inspect <instance_uuid>
+uv run autodl instance inspect <instance_uuid> --show-secret
 ```
 
 `--stock` 会额外尝试调用弹性部署 GPU 库存接口，并按实例的地区和 GPU 规格做匹配。
