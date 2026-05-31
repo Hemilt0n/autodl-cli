@@ -204,6 +204,7 @@ uv run autodl account balance
 uv run autodl instance list
 uv run autodl instance list --stock
 uv run autodl instance status <instance_uuid>
+uv run autodl instance status -n <instance_name>
 uv run autodl instance inspect <instance_uuid>
 ```
 
@@ -211,12 +212,17 @@ uv run autodl instance inspect <instance_uuid>
 该库存接口属于弹性部署能力，AutoDL 文档标注需要企业认证；普通 Pro 账号可能只能看到
 `unknown`。
 
+`status`、`inspect`、`start`、`stop`、`release`、`destroy` 都支持 `-n/--name`
+按实例名称操作。实例名称需要先在 AutoDL 控制台设置；如果当前实例没有名称或找不到匹配项，
+命令只会输出提示，不会继续执行开机、关机或释放。
+
 创建实例功能暂时下线，待重新核对 Pro API 参数后再开放。当前建议先在 AutoDL 网页控制台创建实例，再用本工具查询、开机、关机、释放和保存镜像。
 
 开机：
 
 ```bash
 uv run autodl instance start <instance_uuid>
+uv run autodl instance start -n <instance_name>
 ```
 
 带启动命令开机：

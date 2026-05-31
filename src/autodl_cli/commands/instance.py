@@ -62,17 +62,31 @@ def list_instances(
 
 
 @app.command("status")
-def status(ctx: typer.Context, instance_uuid: str) -> None:
+def status(
+    ctx: typer.Context,
+    instance_uuid: str | None = typer.Argument(None),
+    name: str = typer.Option("", "--name", "-n", help="按实例名称查找。"),
+) -> None:
     """查看 Pro 实例状态。"""
     with client_from_ctx(ctx) as client:
+        instance_uuid = _resolve_instance_uuid(ctx, client, instance_uuid, name)
+        if not instance_uuid:
+            return
         data = client.instance_status(instance_uuid)
     _print_data(ctx, "Instance Status", data)
 
 
 @app.command("inspect")
-def inspect(ctx: typer.Context, instance_uuid: str) -> None:
+def inspect(
+    ctx: typer.Context,
+    instance_uuid: str | None = typer.Argument(None),
+    name: str = typer.Option("", "--name", "-n", help="按实例名称查找。"),
+) -> None:
     """查看 Pro 实例详情，默认隐藏敏感信息。"""
     with client_from_ctx(ctx) as client:
+        instance_uuid = _resolve_instance_uuid(ctx, client, instance_uuid, name)
+        if not instance_uuid:
+            return
         data = client.instance_snapshot(instance_uuid)
     _print_data(ctx, "Instance", data)
 
@@ -80,19 +94,30 @@ def inspect(ctx: typer.Context, instance_uuid: str) -> None:
 @app.command("start")
 def start(
     ctx: typer.Context,
-    instance_uuid: str,
+    instance_uuid: str | None = typer.Argument(None),
+    name: str = typer.Option("", "--name", "-n", help="按实例名称查找。"),
     start_command: str | None = typer.Option(None, "--start-command"),
 ) -> None:
     """以有卡模式开机 Pro 实例。"""
     with client_from_ctx(ctx) as client:
+        instance_uuid = _resolve_instance_uuid(ctx, client, instance_uuid, name)
+        if not instance_uuid:
+            return
         data = client.power_on(instance_uuid, start_command=start_command)
     _print_data(ctx, "Instance Start", data or {"ok": True})
 
 
 @app.command("stop")
-def stop(ctx: typer.Context, instance_uuid: str) -> None:
+def stop(
+    ctx: typer.Context,
+    instance_uuid: str | None = typer.Argument(None),
+    name: str = typer.Option("", "--name", "-n", help="按实例名称查找。"),
+) -> None:
     """关机 Pro 实例。"""
     with client_from_ctx(ctx) as client:
+        instance_uuid = _resolve_instance_uuid(ctx, client, instance_uuid, name)
+        if not instance_uuid:
+            return
         data = client.power_off(instance_uuid)
     _print_data(ctx, "Instance Stop", data or {"ok": True})
 
@@ -100,17 +125,21 @@ def stop(ctx: typer.Context, instance_uuid: str) -> None:
 @app.command("release")
 def release(
     ctx: typer.Context,
-    instance_uuid: str,
+    instance_uuid: str | None = typer.Argument(None),
+    name: str = typer.Option("", "--name", "-n", help="按实例名称查找。"),
     yes: bool = typer.Option(False, "--yes", "-y", help="跳过确认。"),
 ) -> None:
     """释放已关机的 Pro 实例。"""
-    _warn_dangerous_operation(
-        "高危操作：release 会释放实例资源。请确认实例内重要数据、镜像和任务状态已经处理完毕。",
-        instance_uuid,
-    )
-    if not yes:
-        typer.confirm(f"确认继续释放实例 {instance_uuid}？", abort=True)
     with client_from_ctx(ctx) as client:
+        instance_uuid = _resolve_instance_uuid(ctx, client, instance_uuid, name)
+        if not instance_uuid:
+            return
+        _warn_dangerous_operation(
+            "高危操作：release 会释放实例资源。请确认实例内重要数据、镜像和任务状态已经处理完毕。",
+            instance_uuid,
+        )
+        if not yes:
+            typer.confirm(f"确认继续释放实例 {instance_uuid}？", abort=True)
         data = client.release(instance_uuid)
     _print_data(ctx, "Instance Release", data or {"ok": True})
 
@@ -118,17 +147,21 @@ def release(
 @app.command("destroy")
 def destroy(
     ctx: typer.Context,
-    instance_uuid: str,
+    instance_uuid: str | None = typer.Argument(None),
+    name: str = typer.Option("", "--name", "-n", help="按实例名称查找。"),
     yes: bool = typer.Option(False, "--yes", "-y", help="跳过确认。"),
 ) -> None:
     """先关机再释放 Pro 实例。"""
-    _warn_dangerous_operation(
-        "高危操作：destroy 会先关机再释放实例资源。请确认实例内重要数据、镜像和任务状态已经处理完毕。",
-        instance_uuid,
-    )
-    if not yes:
-        typer.confirm(f"确认继续关机并释放实例 {instance_uuid}？", abort=True)
     with client_from_ctx(ctx) as client:
+        instance_uuid = _resolve_instance_uuid(ctx, client, instance_uuid, name)
+        if not instance_uuid:
+            return
+        _warn_dangerous_operation(
+            "高危操作：destroy 会先关机再释放实例资源。请确认实例内重要数据、镜像和任务状态已经处理完毕。",
+            instance_uuid,
+        )
+        if not yes:
+            typer.confirm(f"确认继续关机并释放实例 {instance_uuid}？", abort=True)
         stop_result = client.power_off(instance_uuid)
         release_result = client.release(instance_uuid)
     _print_data(
@@ -174,6 +207,69 @@ def _normalize_instance_summary(row: dict[str, Any]) -> dict[str, Any]:
         "gpu_spec_name",
     )
     return normalized
+
+
+def _resolve_instance_uuid(
+    ctx: typer.Context,
+    client: Any,
+    instance_uuid: str | None,
+    name: str,
+) -> str:
+    if instance_uuid:
+        return instance_uuid
+    name = name.strip()
+    if not name:
+        _print_resolution_message(ctx, "请提供 instance_uuid，或使用 -n/--name 指定实例名称。")
+        return ""
+
+    rows = _list_all_instance_summaries(client)
+    matches = [row for row in rows if str(row.get("name") or "") == name]
+    if not matches:
+        _print_resolution_message(
+            ctx,
+            f"未找到名称为 '{name}' 的实例。"
+            "如果实例没有名称，请先在 AutoDL 控制台设置实例名称，或直接使用 instance_uuid。",
+        )
+        return ""
+    if len(matches) > 1:
+        uuids = ", ".join(str(row.get("uuid") or "") for row in matches)
+        _print_resolution_message(
+            ctx,
+            f"找到多个名称为 '{name}' 的实例：{uuids}。请直接使用 instance_uuid 操作。",
+        )
+        return ""
+    uuid = str(matches[0].get("uuid") or "")
+    if not uuid:
+        _print_resolution_message(
+            ctx,
+            f"名称为 '{name}' 的实例缺少 uuid 字段，请直接使用 instance_uuid 操作。",
+        )
+    return uuid
+
+
+def _list_all_instance_summaries(client: Any) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    page_index = 1
+    page_size = 100
+    max_pages = 50
+    while page_index <= max_pages:
+        page = client.list_instances(page_index=page_index, page_size=page_size)
+        items = [_normalize_instance_summary(row) for row in page.items]
+        rows.extend(items)
+        if page.total_page is not None:
+            if page_index >= page.total_page:
+                break
+        elif len(items) < page_size:
+            break
+        page_index += 1
+    return rows
+
+
+def _print_resolution_message(ctx: typer.Context, message: str) -> None:
+    if ctx.obj.json_output:
+        print_json({"ok": False, "message": message})
+    else:
+        typer.echo(message)
 
 
 def _attach_stock_status(client: Any, rows: list[dict[str, Any]]) -> None:

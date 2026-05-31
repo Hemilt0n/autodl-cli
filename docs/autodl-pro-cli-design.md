@@ -187,6 +187,7 @@ CLI 价值：
 
 - `autodl instance list`。
 - `autodl instance list --stock`：显式尝试调用弹性部署库存接口，并按实例地区/GPU 做 best-effort 匹配。
+- 单实例命令支持 `-n/--name`：通过当前账号实例列表按名称解析 UUID，再执行 `status`、`inspect`、`start`、`stop`、`release`、`destroy`。
 - `autodl instance list --all` 自动翻页。
 - `autodl monitor all`。
 - `autodl cleanup` 筛选停止或长时间运行实例。
@@ -196,6 +197,7 @@ CLI 价值：
 - 这个接口获取的是当前账号自己的 Pro 实例列表，不是 AutoDL 平台的物理机器列表，也不是全站可用算力库存。
 - 作为官方公开接口，只读查询本身风险较低，适合用于 CLI 列表展示、监控和初始化校验。
 - 风险主要来自过高频轮询、打印敏感连接信息、以及把列表结果写入不安全日志。CLI 应默认限速、脱敏 SSH 密码/Jupyter token，并支持 `--json` 但不默认输出密钥字段。
+- 名称解析只做精确匹配；名称缺失、未匹配或重复匹配时只提示用户改用 UUID，不继续执行计费或破坏性操作。
 - 如果要获取“某地区某 GPU 还有多少库存”，Pro API 未看到对应接口；弹性部署文档中的 GPU 库存接口属于企业弹性部署能力，因此只通过 `--stock` 显式启用，且失败时不影响实例列表本身。
 
 #### 开机实例

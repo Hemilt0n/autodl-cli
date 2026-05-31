@@ -291,6 +291,84 @@ def test_instance_destroy_stops_then_releases(tmp_path: Path):
     ]
 
 
+def test_instance_start_can_resolve_uuid_by_name(tmp_path: Path):
+    config_path = tmp_path / "config.toml"
+    paths: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        paths.append(request.url.path)
+        if request.url.path == "/api/v1/dev/instance/pro/list":
+            payload = json.loads(request.content)
+            assert payload == {"page_index": 1, "page_size": 100}
+            return httpx.Response(
+                200,
+                json={
+                    "code": "Success",
+                    "data": {"list": [{"uuid": "pro-abc", "name": "train-job"}]},
+                },
+            )
+        assert request.url.path == "/api/v1/dev/instance/pro/power_on"
+        payload = json.loads(request.content)
+        assert payload["instance_uuid"] == "pro-abc"
+        return httpx.Response(200, json={"code": "Success", "data": {}})
+
+    with _mock_client(handler):
+        result = runner.invoke(
+            app,
+            [
+                "--config",
+                str(config_path),
+                "--token",
+                "token-1",
+                "--json",
+                "instance",
+                "start",
+                "-n",
+                "train-job",
+            ],
+        )
+
+    assert result.exit_code == 0
+    assert paths == [
+        "/api/v1/dev/instance/pro/list",
+        "/api/v1/dev/instance/pro/power_on",
+    ]
+    assert json.loads(result.stdout)["ok"] is True
+
+
+def test_instance_name_lookup_missing_prints_hint_without_operation(tmp_path: Path):
+    config_path = tmp_path / "config.toml"
+    paths: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        paths.append(request.url.path)
+        assert request.url.path == "/api/v1/dev/instance/pro/list"
+        return httpx.Response(
+            200,
+            json={"code": "Success", "data": {"list": [{"uuid": "pro-abc"}]}},
+        )
+
+    with _mock_client(handler):
+        result = runner.invoke(
+            app,
+            [
+                "--config",
+                str(config_path),
+                "--token",
+                "token-1",
+                "instance",
+                "start",
+                "-n",
+                "train-job",
+            ],
+        )
+
+    assert result.exit_code == 0
+    assert paths == ["/api/v1/dev/instance/pro/list"]
+    assert "未找到名称为 'train-job' 的实例" in result.stdout
+    assert "请先在 AutoDL 控制台设置实例名称" in result.stdout
+
+
 def test_release_prints_high_risk_warning_even_with_yes(tmp_path: Path):
     config_path = tmp_path / "config.toml"
 
