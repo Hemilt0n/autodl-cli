@@ -94,6 +94,7 @@ def test_help_is_chinese_by_default():
     assert result.exit_code == 0
     assert "AutoDL Pro 命令行工具" in result.stdout
     assert "账户相关命令" in result.stdout
+    assert "create" not in result.stdout
 
 
 def test_image_save_command(tmp_path: Path):

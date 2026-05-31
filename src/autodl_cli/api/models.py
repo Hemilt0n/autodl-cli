@@ -34,19 +34,3 @@ class Page(FlexibleModel):
     total_count: int | None = None
     total_page: int | None = None
 
-
-class InstanceCreateRequest(FlexibleModel):
-    gpu_spec_uuid: str
-    image_uuid: str
-    cuda_v_from: int
-    req_gpu_amount: int = 1
-    expand_system_disk_by_gb: int = 0
-    data_center_list: list[str] = Field(default_factory=list)
-    instance_name: str | None = None
-    start_command: str | None = None
-
-    def payload(self) -> dict[str, Any]:
-        data = self.model_dump(exclude_none=True)
-        if not data["data_center_list"]:
-            data.pop("data_center_list")
-        return data

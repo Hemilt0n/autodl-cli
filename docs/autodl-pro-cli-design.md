@@ -87,6 +87,8 @@ CLI 价值：
 
 #### 创建实例
 
+状态：待实现。当前 CLI 不开放 `autodl instance create`，因为实际调用仍存在参数/行为兼容问题。重新核对 Pro API 请求格式、错误返回和计费确认流程后再恢复。
+
 接口：
 
 ```http
@@ -110,8 +112,8 @@ POST /api/v1/dev/instance/pro/create
 
 CLI 价值：
 
-- `autodl instance create`。
-- `autodl hunt create` 通过反复调用 create 尝试抢到可用卡。
+- 待实现的 `autodl instance create`。
+- 待实现的 `autodl hunt create` 可通过反复调用 create 等待可用算力。
 - 可加入本地费用保护，如余额下限、最大价格确认、最大尝试次数。
 
 #### 获取实例详情
@@ -620,7 +622,6 @@ Balance
 autodl instance list [--all] [--status running] [--page-size 20]
 autodl instance status INSTANCE_UUID
 autodl instance inspect INSTANCE_UUID [--show-secret]
-autodl instance create [OPTIONS]
 autodl instance start INSTANCE_UUID [--start-command CMD] [--wait]
 autodl instance stop INSTANCE_UUID [--wait]
 autodl instance release INSTANCE_UUID [--yes]
@@ -629,7 +630,7 @@ autodl instance ssh-cmd INSTANCE_UUID [--copy]
 autodl instance jupyter INSTANCE_UUID [--show-token]
 ```
 
-`create` 参数：
+待实现的 `create` 参数：
 
 ```text
 --data-center TEXT        可重复，例如 --data-center westDC3
@@ -642,6 +643,8 @@ autodl instance jupyter INSTANCE_UUID [--show-token]
 --start-command TEXT
 --wait
 ```
+
+当前不开放 `autodl instance create` 命令。建议先在 AutoDL 网页控制台创建实例，再用 CLI 进行查询、开机、关机、释放和镜像保存。
 
 `destroy` 行为：
 
@@ -841,7 +844,6 @@ class AutoDLClient:
     def list_instances(self, page_index: int, page_size: int) -> Page[InstanceSummary]: ...
     def get_instance_status(self, instance_uuid: str) -> str: ...
     def get_instance_snapshot(self, instance_uuid: str) -> InstanceSnapshot: ...
-    def create_instance(self, request: CreateInstanceRequest) -> str: ...
     def power_on(self, instance_uuid: str, start_command: str | None = None) -> None: ...
     def power_off(self, instance_uuid: str) -> None: ...
     def release(self, instance_uuid: str) -> None: ...
@@ -1113,13 +1115,13 @@ HTTP mock 测试：
   - `init`
   - `auth check`
   - `account balance`
-  - `instance list/status/inspect/create/start/stop/release/destroy`
+  - `instance list/status/inspect/start/stop/release/destroy`
   - `image list/save`
+- 不做：
+  - `instance create`，待重新核对 Pro API 参数后恢复。
   - `webhook test`
   - `monitor watch`
-  - `hunt start`
-  - `hunt create`
-- 不做：
+  - `hunt start/create`
   - 企业弹性部署完整管理和库存查询。
   - 平台侧 webhook 配置。
   - 镜像删除/重命名。

@@ -4,7 +4,7 @@ from typing import Any
 
 import httpx
 
-from autodl_cli.api.models import Balance, InstanceCreateRequest, Page
+from autodl_cli.api.models import Balance, Page
 from autodl_cli.constants import API_BASE_URL, DEFAULT_REQUEST_TIMEOUT_SECONDS
 from autodl_cli.errors import (
     AutoDLAPIError,
@@ -62,13 +62,6 @@ class AutoDLClient:
             "GET",
             "/api/v1/dev/instance/pro/snapshot",
             params={"instance_uuid": instance_uuid},
-        )
-
-    def create_instance(self, request: InstanceCreateRequest) -> dict[str, Any]:
-        return self._request(
-            "POST",
-            "/api/v1/dev/instance/pro/create",
-            json=request.payload(),
         )
 
     def power_on(self, instance_uuid: str, *, start_command: str | None = None) -> dict[str, Any]:

@@ -10,7 +10,7 @@ Current implemented scope:
 
 - AutoDL developer-token based authentication.
 - Account balance lookup.
-- Pro instance list, status, inspect, create, start, stop, release, destroy.
+- Pro instance list, status, inspect, start, stop, release, destroy.
 - Pro private image list and save.
 - JSON output for script integration.
 - Redaction of sensitive fields in user-facing output.
@@ -63,7 +63,6 @@ Current public endpoints in use:
 - `POST /api/v1/dev/instance/pro/list`
 - `GET /api/v1/dev/instance/pro/status`
 - `GET /api/v1/dev/instance/pro/snapshot`
-- `POST /api/v1/dev/instance/pro/create`
 - `POST /api/v1/dev/instance/pro/power_on`
 - `POST /api/v1/dev/instance/pro/power_off`
 - `POST /api/v1/dev/instance/pro/release`
@@ -84,7 +83,6 @@ AutoDL Pro operations can create costs or destroy resources.
 
 Treat these as billable or destructive:
 
-- `instance create`
 - `instance start`
 - `instance release`
 - `instance destroy`
@@ -191,6 +189,7 @@ Never revert unrelated user or other-agent changes unless explicitly instructed.
 
 Planned but not core yet:
 
+- Pro instance create. This was intentionally removed from the CLI until request parameters and real Pro behavior are revalidated.
 - Feishu webhook notifications.
 - Generic webhook notifications.
 - Instance monitoring.

@@ -4,9 +4,7 @@ from typing import Any
 
 import typer
 
-from autodl_cli.api.models import InstanceCreateRequest
-from autodl_cli.app import client_from_ctx, manager_from_ctx
-from autodl_cli.errors import AutoDLConfigError
+from autodl_cli.app import client_from_ctx
 from autodl_cli.output import print_json, print_kv, print_rows
 
 app = typer.Typer(help="Pro 实例相关命令。", no_args_is_help=True)
@@ -46,37 +44,6 @@ def inspect(ctx: typer.Context, instance_uuid: str) -> None:
     with client_from_ctx(ctx) as client:
         data = client.instance_snapshot(instance_uuid)
     _print_data(ctx, "Instance", data)
-
-
-@app.command("create")
-def create(
-    ctx: typer.Context,
-    gpu_spec_uuid: str = typer.Option("", "--gpu-spec-uuid"),
-    image_uuid: str = typer.Option("", "--image-uuid"),
-    cuda_v_from: int | None = typer.Option(None, "--cuda-v-from"),
-    gpu_amount: int | None = typer.Option(None, "--gpu-amount", min=1, max=4),
-    disk_gb: int | None = typer.Option(None, "--disk-gb", min=0, max=500),
-    data_center: list[str] | None = typer.Option(None, "--data-center"),
-    name: str | None = typer.Option(None, "--name"),
-    start_command: str | None = typer.Option(None, "--start-command"),
-) -> None:
-    """创建 Pro 实例。注意：这是可能产生费用的操作。"""
-    profile = manager_from_ctx(ctx).get_profile(ctx.obj.profile)
-    request = InstanceCreateRequest(
-        gpu_spec_uuid=gpu_spec_uuid or _required_default(profile.default_gpu_spec_uuid, "gpu_spec_uuid"),
-        image_uuid=image_uuid or _required_default(profile.default_image_uuid, "image_uuid"),
-        cuda_v_from=cuda_v_from or profile.default_cuda_v_from,
-        req_gpu_amount=gpu_amount or profile.default_gpu_amount,
-        expand_system_disk_by_gb=(
-            profile.default_expand_system_disk_by_gb if disk_gb is None else disk_gb
-        ),
-        data_center_list=data_center or profile.default_data_centers,
-        instance_name=name,
-        start_command=start_command,
-    )
-    with client_from_ctx(ctx) as client:
-        data = client.create_instance(request)
-    _print_data(ctx, "Instance Created", data)
 
 
 @app.command("start")
@@ -130,12 +97,6 @@ def destroy(
         "Instance Destroy",
         {"stopped": stop_result or True, "released": release_result or True},
     )
-
-
-def _required_default(value: str, name: str) -> str:
-    if value:
-        return value
-    raise AutoDLConfigError(f"Missing {name}. Pass it explicitly or run `autodl init`.")
 
 
 def _normalize_instance_summary(row: dict[str, Any]) -> dict[str, Any]:

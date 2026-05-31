@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-import json
-
 import httpx
 import pytest
 
 from autodl_cli.api.client import AutoDLClient
-from autodl_cli.api.models import InstanceCreateRequest
 from autodl_cli.errors import AutoDLAPIError, AutoDLCapacityError
 
 
@@ -29,25 +26,6 @@ def test_balance_parses_yuan():
     assert balance.cash_yuan == 12.345
     assert balance.voucher_yuan == 2
     assert balance.spent_yuan == 3
-
-
-def test_create_instance_payload_omits_empty_data_centers():
-    seen_payload = {}
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        nonlocal seen_payload
-        seen_payload = dict(json.loads(request.content))
-        return httpx.Response(200, json={"code": "Success", "data": {"instance_uuid": "i-1"}})
-
-    client = AutoDLClient(token="token-1", transport=httpx.MockTransport(handler))
-
-    data = client.create_instance(
-        InstanceCreateRequest(gpu_spec_uuid="gpu", image_uuid="img", cuda_v_from=118)
-    )
-
-    assert data == {"instance_uuid": "i-1"}
-    assert "data_center_list" not in seen_payload
-    assert seen_payload["gpu_spec_uuid"] == "gpu"
 
 
 def test_capacity_error_classification():

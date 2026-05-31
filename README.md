@@ -9,7 +9,6 @@
 - 查看 AutoDL 账户余额。
 - 查看当前账号下的 Pro 实例列表。
 - 查看实例状态和实例详情。
-- 创建 Pro 实例。
 - 有卡开机、关机、释放实例。
 - 一键 `destroy`：先关机，再释放。
 - 保存实例为私有镜像。
@@ -19,6 +18,7 @@
 
 后续计划：
 
+- 创建 Pro 实例。
 - 飞书 Webhook 通知。
 - 实例状态监控。
 - 稀缺算力等待/重试。
@@ -150,16 +150,7 @@ uv run autodl instance status <instance_uuid>
 uv run autodl instance inspect <instance_uuid>
 ```
 
-创建实例：
-
-```bash
-uv run autodl instance create \
-  --gpu-spec-uuid <gpu_spec_uuid> \
-  --image-uuid <image_uuid> \
-  --cuda-v-from 118 \
-  --gpu-amount 1 \
-  --disk-gb 0
-```
+创建实例功能暂时下线，待重新核对 Pro API 参数后再开放。当前建议先在 AutoDL 网页控制台创建实例，再用本工具查询、开机、关机、释放和保存镜像。
 
 开机：
 
@@ -252,11 +243,10 @@ uv run autodl --config ./config.toml account balance
 uv run autodl --version
 ```
 
-## 关于创建、开机和计费
+## 关于开机、释放和计费
 
 请特别注意：
 
-- `instance create` 会创建 Pro 实例，是可能产生费用的操作。
 - `instance start` 会有卡开机，也是可能产生费用的操作。
 - `instance release` 会释放实例。
 - `instance destroy` 会先关机再释放实例。
@@ -270,7 +260,7 @@ uv run autodl instance list
 uv run autodl image list
 ```
 
-确认 token 和输出都正常后，再使用创建、开机、释放命令。
+确认 token 和输出都正常后，再使用开机、释放命令。
 
 ## Pro API 能不能获取机器列表？
 
@@ -318,6 +308,10 @@ uv run autodl --token "$AUTODL_TOKEN" account balance
 ### 为什么没有 Webhook？
 
 Webhook 会做，但不是第一批核心功能。当前先完成账户、实例、镜像这些基础能力。
+
+### 为什么没有创建实例命令？
+
+创建实例接口参数和实际 Pro 行为还需要继续核对。为了避免命令直接报错，或者误触发计费操作，`instance create` 暂时下线，标记为待实现。
 
 ### 为什么没有企业弹性部署 API？
 
