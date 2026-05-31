@@ -39,16 +39,57 @@
 
 这个项目使用 `uv` 管理 Python 环境。
 
-先安装依赖：
+如果你只是想在当前项目目录里试用：
 
 ```bash
 uv sync
+uv run autodl --help
 ```
 
-检查命令是否可用：
+如果你想在项目外的任意目录使用 `autodl` 命令，推荐安装成 uv tool：
 
 ```bash
-uv run autodl --help
+cd /Users/hang/workspace/auto-research/autodl-cli
+uv tool install .
+```
+
+安装后检查：
+
+```bash
+autodl --help
+autodl --version
+```
+
+`uv tool install` 默认会把工具环境安装到：
+
+```text
+~/.local/share/uv/tools
+```
+
+可执行文件会放到：
+
+```text
+~/.local/bin
+```
+
+如果安装后提示 `autodl: command not found`，说明 `~/.local/bin` 没有加入 `PATH`。可以先直接运行：
+
+```bash
+~/.local/bin/autodl --help
+```
+
+或者把它加入 zsh：
+
+```bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+重新安装当前项目的新版本：
+
+```bash
+cd /Users/hang/workspace/auto-research/autodl-cli
+uv tool install . --force
 ```
 
 你应该能看到类似这些命令：
