@@ -1,6 +1,10 @@
-# autodl-cli
+<h1 align="center">autodl-cli</h1>
 
 一个给 AutoDL Pro 用户用的命令行工具。目标是把网页上常见的 Pro 实例操作搬到终端里：查余额、看实例、开机、关机、释放、保存镜像。
+
+<p align="center">
+  <img src="assets/autodl-help.png" alt="autodl --help 界面截图" width="900">
+</p>
 
 这个项目目前专注 **AutoDL Pro 实例**，不做企业弹性部署 API，也不抓网页、不模拟网页登录。
 
