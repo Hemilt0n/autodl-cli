@@ -33,7 +33,9 @@ def save(ctx: typer.Context, instance_uuid: str, name: str = typer.Option(..., "
     _print_data(ctx, "Image Save", data)
 
 
-def _print_data(ctx: typer.Context, title: str, data: dict[str, Any]) -> None:
+def _print_data(ctx: typer.Context, title: str, data: Any) -> None:
+    if not isinstance(data, dict):
+        data = {"result": data}
     if ctx.obj.json_output:
         print_json(data)
     else:

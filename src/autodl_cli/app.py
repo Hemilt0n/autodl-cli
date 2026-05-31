@@ -20,19 +20,36 @@ class AppContext:
     json_output: bool
 
 
-app = typer.Typer(name="autodl", help="AutoDL Pro command-line tool.", no_args_is_help=True)
+app = typer.Typer(
+    name="autodl",
+    help="AutoDL Pro command-line tool.",
+    invoke_without_command=True,
+    no_args_is_help=False,
+)
 
 
 @app.callback()
 def callback(
     ctx: typer.Context,
+    version: bool = typer.Option(
+        False,
+        "--version",
+        help="Show version and exit.",
+        is_eager=True,
+    ),
     profile: str = typer.Option("default", "--profile", "-P", help="Configuration profile."),
     config: Path | None = typer.Option(None, "--config", "-C", help="Config file path."),
     base_url: str | None = typer.Option(None, "--base-url", help="Override API base URL."),
     token: str = typer.Option("", "--token", "-T", help="Temporary token, not persisted."),
     json_output: bool = typer.Option(False, "--json", help="Print JSON output."),
 ) -> None:
+    if version:
+        typer.echo("autodl-cli 0.1.0")
+        raise typer.Exit
     ctx.obj = AppContext(profile, config, base_url, token, json_output)
+    if ctx.invoked_subcommand is None:
+        typer.echo(ctx.get_help())
+        raise typer.Exit
 
 
 def manager_from_ctx(ctx: typer.Context) -> ConfigManager:

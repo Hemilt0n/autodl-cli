@@ -56,7 +56,7 @@ def create(
     cuda_v_from: int | None = typer.Option(None, "--cuda-v-from"),
     gpu_amount: int | None = typer.Option(None, "--gpu-amount", min=1, max=4),
     disk_gb: int | None = typer.Option(None, "--disk-gb", min=0, max=500),
-    data_center: list[str] = typer.Option(None, "--data-center"),
+    data_center: list[str] | None = typer.Option(None, "--data-center"),
     name: str | None = typer.Option(None, "--name"),
     start_command: str | None = typer.Option(None, "--start-command"),
 ) -> None:
@@ -113,13 +113,34 @@ def release(
     _print_data(ctx, "Instance Release", data or {"ok": True})
 
 
+@app.command("destroy")
+def destroy(
+    ctx: typer.Context,
+    instance_uuid: str,
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation."),
+) -> None:
+    """Power off and then release a Pro instance."""
+    if not yes:
+        typer.confirm(f"Power off and release instance {instance_uuid}?", abort=True)
+    with client_from_ctx(ctx) as client:
+        stop_result = client.power_off(instance_uuid)
+        release_result = client.release(instance_uuid)
+    _print_data(
+        ctx,
+        "Instance Destroy",
+        {"stopped": stop_result or True, "released": release_result or True},
+    )
+
+
 def _required_default(value: str, name: str) -> str:
     if value:
         return value
     raise AutoDLConfigError(f"Missing {name}. Pass it explicitly or run `autodl init`.")
 
 
-def _print_data(ctx: typer.Context, title: str, data: dict[str, Any]) -> None:
+def _print_data(ctx: typer.Context, title: str, data: Any) -> None:
+    if not isinstance(data, dict):
+        data = {"result": data}
     if ctx.obj.json_output:
         print_json(data)
     else:

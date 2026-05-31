@@ -15,7 +15,7 @@ def init_command(
     cuda_v_from: int = typer.Option(118, "--cuda-v-from"),
     gpu_amount: int = typer.Option(1, "--gpu-amount"),
     disk_gb: int = typer.Option(0, "--disk-gb"),
-    data_center: list[str] = typer.Option(None, "--data-center"),
+    data_center: list[str] | None = typer.Option(None, "--data-center"),
 ) -> None:
     """Initialize a profile with token and default Pro instance options."""
     manager = manager_from_ctx(ctx)

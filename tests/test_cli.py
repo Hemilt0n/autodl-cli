@@ -84,6 +84,44 @@ def test_image_save_command(tmp_path: Path):
     assert json.loads(result.stdout)["image_uuid"] == "img-1"
 
 
+def test_instance_destroy_stops_then_releases(tmp_path: Path):
+    config_path = tmp_path / "config.toml"
+    paths: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        paths.append(request.url.path)
+        return httpx.Response(200, json={"code": "Success", "data": {}})
+
+    with _mock_client(handler):
+        result = runner.invoke(
+            app,
+            [
+                "--config",
+                str(config_path),
+                "--token",
+                "token-1",
+                "--json",
+                "instance",
+                "destroy",
+                "i-1",
+                "--yes",
+            ],
+        )
+
+    assert result.exit_code == 0
+    assert paths == [
+        "/api/v1/dev/instance/pro/power_off",
+        "/api/v1/dev/instance/pro/release",
+    ]
+
+
+def test_version_command():
+    result = runner.invoke(app, ["--version"])
+
+    assert result.exit_code == 0
+    assert "autodl-cli 0.1.0" in result.stdout
+
+
 class _mock_client:
     def __init__(self, handler):
         self.handler = handler
