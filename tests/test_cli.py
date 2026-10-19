@@ -545,3 +545,104 @@ class _mock_client:
         from autodl_cli.api.client import AutoDLClient
 
         AutoDLClient.__init__ = self.original_init
+
+
+def test_start_wait_retries_and_preserves_payload(tmp_path, monkeypatch):
+    import autodl_cli.commands.instance as instance
+
+    sleeps = []
+    monkeypatch.setattr(instance.time, "sleep", sleeps.append)
+    calls = []
+
+    def handler(request):
+        calls.append(json.loads(request.content))
+        if len(calls) < 3:
+            return httpx.Response(200, json={"code": "NoStock", "msg": "库存不足"})
+        return httpx.Response(200, json={"code": "Success", "data": {}})
+
+    with _mock_client(handler):
+        result = runner.invoke(app, [
+            "--config", str(tmp_path / "config.toml"), "--token", "test", "--json",
+            "instance", "start", "i-1", "--wait", "--start-command", "bash job.sh",
+        ])
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.stdout) == {"ok": True, "attempts": 3,
+                                        "message": "开机成功，共尝试 3 次。"}
+    assert len(sleeps) == 2
+    assert all(13.5 <= delay <= 16.5 for delay in sleeps)
+    assert all(payload == {"instance_uuid": "i-1", "payload": "gpu",
+                           "start_command": "bash job.sh"} for payload in calls)
+    assert result.stderr == ""
+
+
+def test_start_wait_limits(tmp_path, monkeypatch):
+    import autodl_cli.commands.instance as instance
+
+    for options, expected_attempts, expected_elapsed in [
+        ([], 120, 1800),
+        (["--max-attempts", "3"], 3, 30),
+        (["--timeout", "20"], 2, 20),
+        (["--max-attempts", "1", "--timeout", "20"], 1, 0),
+    ]:
+        now = [0.0]
+        calls = []
+        monkeypatch.setattr(instance.time, "monotonic", lambda: now[0])
+        monkeypatch.setattr(instance.time, "sleep", lambda seconds: now.__setitem__(0, now[0] + seconds))
+        monkeypatch.setattr(instance.random, "uniform", lambda low, high: (low + high) / 2)
+
+        def handler(request):
+            calls.append(request)
+            return httpx.Response(200, json={"code": "NoStock", "msg": "库存不足"})
+
+        with _mock_client(handler):
+            result = runner.invoke(app, [
+                "--config", str(tmp_path / "config.toml"), "--token", "test", "--json",
+                "instance", "start", "i-1", "--wait", *options,
+            ])
+        assert result.exit_code == 1, result.output
+        assert json.loads(result.stdout)["attempts"] == expected_attempts
+        assert json.loads(result.stdout)["ok"] is False
+        assert len(calls) == expected_attempts
+        assert now[0] == expected_elapsed
+
+
+def test_start_wait_other_error_does_not_retry(tmp_path, monkeypatch):
+    from autodl_cli.errors import AutoDLAuthError
+    import autodl_cli.commands.instance as instance
+
+    monkeypatch.setattr(instance.time, "sleep", lambda _: (_ for _ in ()).throw(AssertionError()))
+    with _mock_client(lambda _: httpx.Response(401)):
+        result = runner.invoke(app, [
+            "--config", str(tmp_path / "config.toml"), "--token", "test",
+            "instance", "start", "i-1", "--wait",
+        ])
+    assert isinstance(result.exception, AutoDLAuthError)
+
+
+def test_start_wait_invalid_options():
+    for options in [
+        ["--interval", "0"], ["--interval", "nan"], ["--interval", "inf"],
+        ["--timeout", "-1"], ["--timeout", "nan"], ["--max-attempts", "0"],
+    ]:
+        result = runner.invoke(app, ["instance", "start", "i-1", "--wait", *options])
+        assert result.exit_code == 2
+
+
+def test_start_wait_plain_output_is_short(tmp_path, monkeypatch):
+    import autodl_cli.commands.instance as instance
+
+    monkeypatch.setattr(instance.time, "sleep", lambda _: None)
+    calls = []
+
+    def handler(request):
+        calls.append(request)
+        return httpx.Response(200, json={"code": "NoStock" if len(calls) < 5 else "Success"})
+
+    with _mock_client(handler):
+        result = runner.invoke(app, [
+            "--config", str(tmp_path / "config.toml"), "--token", "test",
+            "instance", "start", "i-1", "--wait",
+        ])
+    assert result.exit_code == 0
+    assert result.stdout == "开机成功，共尝试 5 次。\n"
+    assert len(result.stderr.splitlines()) == 1

@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import math
+import random
+import time
 from typing import Any
 
 import typer
 
 from autodl_cli.app import client_from_ctx
-from autodl_cli.errors import AutoDLError
+from autodl_cli.errors import AutoDLCapacityError, AutoDLError
 from autodl_cli.output import print_json, print_kv, print_rows
 
 app = typer.Typer(help="Pro 实例相关命令。", no_args_is_help=True)
@@ -98,14 +101,73 @@ def start(
     instance_uuid: str | None = typer.Argument(None),
     name: str = typer.Option("", "--name", "-n", help="按实例名称查找。"),
     start_command: str | None = typer.Option(None, "--start-command"),
+    wait: bool = typer.Option(False, "--wait", help="无库存时轮询开机。"),
+    interval: float = typer.Option(15, "--interval", help="重试间隔（秒），随机波动 ±10%。"),
+    max_attempts: int | None = typer.Option(
+        None, "--max-attempts", min=1, help="最大开机尝试次数，包含首次请求。"
+    ),
+    timeout: float | None = typer.Option(
+        None, "--timeout", help="轮询时长（秒）；未指定次数或时长时默认 1800 秒。"
+    ),
 ) -> None:
-    """以有卡模式开机 Pro 实例。"""
+    """以有卡模式开机 Pro 实例，可等待库存并重试。"""
+    for option, value in (("--interval", interval), ("--timeout", timeout)):
+        if value is not None and (not math.isfinite(value) or value <= 0):
+            raise typer.BadParameter("必须是大于 0 的有限秒数。", param_hint=option)
+    if not wait and (interval != 15 or timeout is not None or max_attempts is not None):
+        raise typer.BadParameter("轮询参数需要配合 --wait 使用。")
     with client_from_ctx(ctx) as client:
         instance_uuid = _resolve_instance_uuid(ctx, client, instance_uuid, name)
         if not instance_uuid:
             return
+        if wait:
+            _wait_for_start(ctx, client, instance_uuid, start_command, interval, max_attempts, timeout)
+            return
         data = client.power_on(instance_uuid, start_command=start_command)
     _print_data(ctx, "Instance Start", data or {"ok": True})
+
+
+def _wait_for_start(
+    ctx: typer.Context,
+    client: Any,
+    instance_uuid: str,
+    start_command: str | None,
+    interval: float,
+    max_attempts: int | None,
+    timeout: float | None,
+) -> None:
+    if timeout is None and max_attempts is None:
+        timeout = 1800
+    deadline = time.monotonic() + timeout if timeout is not None else None
+    attempts = 0
+    reason = "达到最大等待时长"
+    while deadline is None or time.monotonic() < deadline:
+        attempts += 1
+        try:
+            client.power_on(instance_uuid, start_command=start_command)
+        except AutoDLCapacityError:
+            if max_attempts is not None and attempts >= max_attempts:
+                reason = "达到最大尝试次数"
+                break
+            if attempts == 1 and not ctx.obj.json_output:
+                typer.echo("暂无库存，等待重试（Ctrl+C 取消）…", err=True)
+            delay = random.uniform(interval * 0.9, interval * 1.1)
+            if deadline is not None:
+                delay = min(delay, max(0, deadline - time.monotonic()))
+            time.sleep(delay)
+        else:
+            message = f"开机成功，共尝试 {attempts} 次。"
+            if ctx.obj.json_output:
+                print_json({"ok": True, "attempts": attempts, "message": message})
+            else:
+                typer.echo(message)
+            return
+    message = f"{reason}，共尝试 {attempts} 次，未能开机。"
+    if ctx.obj.json_output:
+        print_json({"ok": False, "attempts": attempts, "message": message})
+    else:
+        typer.echo(message, err=True)
+    raise typer.Exit(1)
 
 
 @app.command("stop")

@@ -16,6 +16,7 @@ AutoDL Pro 实例控制台：[https://www.autodl.com/console/instance/pro/list](
 - 查看当前账号下的 Pro 实例列表。
 - 查看实例状态和实例详情。
 - 有卡开机、关机、释放实例。
+- 无库存时轮询开机，支持间隔、次数和时长限制。
 - 一键 `destroy`：先关机，再释放。
 - 保存实例为私有镜像。
 - 查看私有镜像列表。
@@ -27,7 +28,6 @@ AutoDL Pro 实例控制台：[https://www.autodl.com/console/instance/pro/list](
 - 创建 Pro 实例。
 - 飞书 Webhook 通知。
 - 实例状态监控。
-- 稀缺算力等待/重试。
 - 定时开关机。
 
 ## 适合谁
@@ -241,6 +241,24 @@ uv run autodl instance start <instance_uuid> \
   --start-command "bash /root/start.sh"
 ```
 
+无库存时轮询开机：
+
+```bash
+uv run autodl instance start <instance_uuid> --wait
+uv run autodl instance start -n <instance_name> --wait --interval 20 --max-attempts 100
+uv run autodl instance start <instance_uuid> --wait --timeout 3600
+```
+
+首次立即尝试。默认间隔为 15 秒，每次随机波动 ±10%（13.5–16.5 秒）。
+`--interval` 和 `--timeout` 的单位均为秒，支持小数。
+未指定次数或时长时，默认等待 1800 秒（30 分钟）。仅指定 `--max-attempts` 时，
+只限制次数；首次请求计入次数。同时指定次数和时长时，先达到哪个限制就停止。
+时长包含请求和等待时间；到期后不再发起新请求，正在进行的请求会等待返回。
+仅库存不足会重试，其他错误立即退出。Ctrl+C 可取消等待。
+过程中仅输出一次等待提示；成功后输出开机成功和尝试次数。达到限制时以退出码 1 退出。
+`--json` 模式仅输出最终结果，包含 `ok`、`attempts` 和 `message`。
+成功以开机 API 返回 `Success` 为准，不额外等待 SSH 或应用服务就绪。
+
 关机：
 
 ```bash
@@ -396,7 +414,7 @@ uv run autodl instance list --stock
 这个选项会额外调用弹性部署 GPU 库存接口。该接口和 Pro 实例列表接口不是同一类能力，
 AutoDL 文档标注需要企业认证；普通 Pro 账号可能无法获取准确库存。
 
-因为 AutoDL Pro 是算力和数据分离，通常不需要“抢某一台机器”。后续如果做等待/重试，也只会基于官方 Pro API 做温和重试，不会模拟网页登录或高频刷接口。
+因为 AutoDL Pro 是算力和数据分离，通常不需要“抢某一台机器”。等待/重试基于官方 Pro API，默认每 15 秒尝试一次，并加入随机间隔。
 
 ## 常见问题
 
