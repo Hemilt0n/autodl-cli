@@ -138,7 +138,8 @@ def _wait_for_start(
 ) -> None:
     if timeout is None and max_attempts is None:
         timeout = 1800
-    deadline = time.monotonic() + timeout if timeout is not None else None
+    started = time.monotonic()
+    deadline = started + timeout if timeout is not None else None
     attempts = 0
     reason = "达到最大等待时长"
     while deadline is None or time.monotonic() < deadline:
@@ -149,11 +150,17 @@ def _wait_for_start(
             if max_attempts is not None and attempts >= max_attempts:
                 reason = "达到最大尝试次数"
                 break
-            if attempts == 1 and not ctx.obj.json_output:
-                typer.echo("暂无库存，等待重试（Ctrl+C 取消）…", err=True)
             delay = random.uniform(interval * 0.9, interval * 1.1)
             if deadline is not None:
                 delay = min(delay, max(0, deadline - time.monotonic()))
+            if not ctx.obj.json_output:
+                elapsed = max(0, int(time.monotonic() - started))
+                minutes, seconds = divmod(elapsed, 60)
+                typer.echo(
+                    f"尝试 {attempts} 次 | 已等待 {minutes:02d}:{seconds:02d} | "
+                    f"暂无库存，{delay:.1f}s 后重试",
+                    err=True,
+                )
             time.sleep(delay)
         else:
             message = f"开机成功，共尝试 {attempts} 次。"

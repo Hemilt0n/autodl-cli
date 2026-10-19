@@ -645,4 +645,32 @@ def test_start_wait_plain_output_is_short(tmp_path, monkeypatch):
         ])
     assert result.exit_code == 0
     assert result.stdout == "开机成功，共尝试 5 次。\n"
-    assert len(result.stderr.splitlines()) == 1
+    assert len(result.stderr.splitlines()) == 4
+
+
+def test_start_wait_rolling_progress(tmp_path, monkeypatch):
+    import autodl_cli.commands.instance as instance
+
+    now = [0.0]
+    monkeypatch.setattr(instance.time, "monotonic", lambda: now[0])
+    monkeypatch.setattr(instance.time, "sleep", lambda seconds: now.__setitem__(0, now[0] + seconds))
+    monkeypatch.setattr(instance.random, "uniform", lambda low, high: 3)
+    calls = []
+
+    def handler(request):
+        calls.append(request)
+        return httpx.Response(200, json={"code": "NoStock" if len(calls) < 3 else "Success"})
+
+    with _mock_client(handler):
+        result = runner.invoke(app, [
+            "--config", str(tmp_path / "config.toml"), "--token", "test",
+            "instance", "start", "i-1", "--wait",
+        ])
+    assert result.exit_code == 0, result.exception
+    assert result.stderr.splitlines() == [
+        "尝试 1 次 | 已等待 00:00 | 暂无库存，3.0s 后重试",
+        "尝试 2 次 | 已等待 00:03 | 暂无库存，3.0s 后重试",
+    ]
+    assert "\r" not in result.stderr
+    assert "\x1b" not in result.stderr
+    assert "开机成功，共尝试 3 次。" in result.stdout
