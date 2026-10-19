@@ -241,6 +241,36 @@ uv run autodl instance start <instance_uuid> \
   --start-command "bash /root/start.sh"
 ```
 
+无卡开机（网页接口，仅支持主账号）：
+
+```bash
+# 隐藏输入网页登录 Token，与开发者 Token 分开保存
+uv run autodl auth web-token
+# 或从已有文件导入
+uv run autodl auth web-token --token-file ~/.local/share/autodl/web.token
+
+uv run autodl instance start -n pro-3090 --no-gpu
+uv run autodl instance stop -n pro-3090
+```
+
+网页登录 Token 获取方式：登录 AutoDL 控制台，打开浏览器开发者工具，进入
+Application → Local Storage → `https://www.autodl.com`，复制 `token` 的值。
+不要把 Token 提交到仓库或发到聊天中。
+
+`auth web-token` 支持 `--token-store auto|keyring|file`，默认优先使用系统密钥链，
+不可用时保存到用户数据目录的 `<profile>.web.token`，文件权限为 `0600`。
+通过全局 `--profile` 选择配置；网页与开发者 Token 使用独立的密钥链服务和文件。
+Token 失效后重新运行 `auth web-token`。`config show` 不显示 Token。
+
+`--no-gpu` 使用 `https://www.autodl.com/api/v1/instance/pro/power_on`，
+发送 `payload=non_gpu`。该网页内部接口可能随网页更新而变化。
+实例应为按量计费且处于可开机状态；服务端校验是否允许开机。
+网页提示配置为 0.5 核 CPU、2 GB 内存，配置费用 ¥0.10/小时，最低消费 ¥0.01。
+使用 UUID 时只需网页登录 Token；使用 `-n` 时还需开发者 Token 查询实例名称。
+无卡开机不支持 `--wait`、轮询参数或 `--start-command`，失败后不会自动尝试有卡开机。
+全局 `--token` 和 `--base-url` 仅用于官方 API，不覆盖网页开机的 Token 和地址。
+默认不加 `--no-gpu` 时仍通过官方 API 有卡开机。
+
 无库存时轮询开机：
 
 ```bash
@@ -373,7 +403,7 @@ uv run autodl --version
 
 请特别注意：
 
-- `instance start` 会有卡开机，也是可能产生费用的操作。
+- `instance start` 默认有卡开机；`--no-gpu` 无卡开机，两者都可能产生费用。
 - `instance release` 是高危操作，会释放实例资源。
 - `instance destroy` 是高危操作，会先关机再释放实例资源。
 - 使用 `--yes` 会跳过交互确认，适合脚本，但请只在你非常确定目标实例时使用。

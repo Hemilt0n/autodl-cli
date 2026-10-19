@@ -7,8 +7,9 @@ from typing import Any
 
 import typer
 
-from autodl_cli.app import client_from_ctx
-from autodl_cli.errors import AutoDLCapacityError, AutoDLError
+from autodl_cli.app import client_from_ctx, manager_from_ctx
+from autodl_cli.api.web import AutoDLWebClient
+from autodl_cli.errors import AutoDLCapacityError, AutoDLConfigError, AutoDLError
 from autodl_cli.output import print_json, print_kv, print_rows
 
 app = typer.Typer(help="Pro 实例相关命令。", no_args_is_help=True)
@@ -101,6 +102,7 @@ def start(
     instance_uuid: str | None = typer.Argument(None),
     name: str = typer.Option("", "--name", "-n", help="按实例名称查找。"),
     start_command: str | None = typer.Option(None, "--start-command"),
+    no_gpu: bool = typer.Option(False, "--no-gpu", help="使用网页登录 Token 无卡开机（主账号）。"),
     wait: bool = typer.Option(False, "--wait", help="无库存时轮询开机。"),
     interval: float = typer.Option(15, "--interval", help="重试间隔（秒），随机波动 ±10%。"),
     max_attempts: int | None = typer.Option(
@@ -110,12 +112,29 @@ def start(
         None, "--timeout", help="轮询时长（秒）；未指定次数或时长时默认 1800 秒。"
     ),
 ) -> None:
-    """以有卡模式开机 Pro 实例，可等待库存并重试。"""
+    """默认通过官方 API 有卡开机；--no-gpu 使用网页接口。"""
+    if no_gpu and (wait or start_command is not None):
+        raise typer.BadParameter("--no-gpu 不支持 --wait 或 --start-command。")
     for option, value in (("--interval", interval), ("--timeout", timeout)):
         if value is not None and (not math.isfinite(value) or value <= 0):
             raise typer.BadParameter("必须是大于 0 的有限秒数。", param_hint=option)
     if not wait and (interval != 15 or timeout is not None or max_attempts is not None):
         raise typer.BadParameter("轮询参数需要配合 --wait 使用。")
+    if no_gpu:
+        token = manager_from_ctx(ctx).get_token(ctx.obj.profile, web=True)
+        if not token:
+            raise AutoDLConfigError("请先运行 `autodl auth web-token` 配置网页登录 Token。")
+        if name:
+            with client_from_ctx(ctx) as client:
+                instance_uuid = _resolve_instance_uuid(ctx, client, instance_uuid, name)
+        elif not instance_uuid:
+            raise typer.BadParameter("请提供 instance_uuid 或 --name。")
+        if not instance_uuid:
+            return
+        with AutoDLWebClient(token=token) as client:
+            data = client.power_on_no_gpu(instance_uuid)
+        _print_data(ctx, "Instance Start", data or {"ok": True})
+        return
     with client_from_ctx(ctx) as client:
         instance_uuid = _resolve_instance_uuid(ctx, client, instance_uuid, name)
         if not instance_uuid:

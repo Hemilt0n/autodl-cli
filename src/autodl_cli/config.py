@@ -92,42 +92,42 @@ class ConfigManager:
         config.profiles[name] = profile
         self.save(config)
 
-    def get_token(self, profile: str) -> str | None:
+    def get_token(self, profile: str, *, web: bool = False) -> str | None:
         with contextlib.suppress(Exception):
-            token = keyring.get_password(_KEYRING_SERVICE, profile)
+            token = keyring.get_password(_KEYRING_SERVICE + ("-web" if web else ""), profile)
             if token:
                 return token
 
-        token_path = self._token_path(profile)
+        token_path = self._token_path(profile, web=web)
         if token_path.exists():
             token = token_path.read_text(encoding="utf-8").strip()
             if token:
                 return token
         return None
 
-    def set_token(self, profile: str, token: str, *, store: str = "auto") -> str:
+    def set_token(self, profile: str, token: str, *, store: str = "auto", web: bool = False) -> str:
         if not token.strip():
             raise AutoDLConfigError("Token cannot be empty.")
 
         if store in {"auto", "keyring"}:
             try:
-                keyring.set_password(_KEYRING_SERVICE, profile, token)
+                keyring.set_password(_KEYRING_SERVICE + ("-web" if web else ""), profile, token)
             except Exception as exc:
                 if store == "auto":
-                    self._write_token_file(profile, token)
+                    self._write_token_file(profile, token, web=web)
                     return "file"
                 raise AutoDLConfigError(
                     "Failed to save token to keyring. Use --token-store file if needed."
                 ) from exc
-            token_path = self._token_path(profile)
+            token_path = self._token_path(profile, web=web)
             if token_path.exists():
                 token_path.unlink()
             return "keyring"
 
         if store == "file":
             with contextlib.suppress(Exception):
-                keyring.delete_password(_KEYRING_SERVICE, profile)
-            self._write_token_file(profile, token)
+                keyring.delete_password(_KEYRING_SERVICE + ("-web" if web else ""), profile)
+            self._write_token_file(profile, token, web=web)
             return "file"
 
         raise AutoDLConfigError("Token store must be 'auto', 'keyring', or 'file'.")
@@ -142,12 +142,13 @@ class ConfigManager:
             f"No token configured for profile '{profile}'. Run `autodl init` first."
         )
 
-    def _token_path(self, profile: str) -> Path:
-        return self._data_dir / f"{profile}.token"
+    def _token_path(self, profile: str, *, web: bool = False) -> Path:
+        suffix = "web.token" if web else "token"
+        return self._data_dir / f"{profile}.{suffix}"
 
-    def _write_token_file(self, profile: str, token: str) -> None:
+    def _write_token_file(self, profile: str, token: str, *, web: bool = False) -> None:
         self._data_dir.mkdir(parents=True, exist_ok=True)
-        token_path = self._token_path(profile)
+        token_path = self._token_path(profile, web=web)
         token_path.write_text(token, encoding="utf-8")
         with contextlib.suppress(OSError):
             os.chmod(token_path, 0o600)
